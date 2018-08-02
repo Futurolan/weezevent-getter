@@ -10,7 +10,7 @@ function init () {
     console.error(err)
   }).finally(() => {
     console.log('Wait 5min before next run')
-    setTimeout(init, 30000)
+    setTimeout(init, 5 * 60 * 1000)
   })
 }
 
