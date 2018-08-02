@@ -156,8 +156,25 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
       })
       tickets = tmpTickets
     }
-    console.log(tickets)
-    // Write Data to backoffice
+    const graphqlQuery = {
+      query: `
+      mutation ($input: WeezeventInput) {
+        createWeezevent(input: $input) {
+          entity {
+            entityLabel
+          }
+          errors
+        }
+      }
+      `,
+      variables: {input: {data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN}}
+    }
+
+    const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, {method: 'POST', body: JSON.stringify(graphqlQuery)})
+    const json2 = await res2.json()
+    if (json2 && json2.data && json2.data.createWeezevent.errors.length>0) {
+      throw new Error(json2.data.createWeezevent.errors)
+    }
   } catch (err) {
     cache[`${editionWeezeventEventId}_${tournamentWeezeventId}`] = null
     console.log(err)
