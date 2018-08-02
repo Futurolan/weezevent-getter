@@ -172,7 +172,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
 
     const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, {method: 'POST', body: JSON.stringify(graphqlQuery)})
     const json2 = await res2.json()
-    if (json2 && json2.data && json2.data.createWeezevent.errors.length>0) {
+    if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
       throw new Error(json2.data.createWeezevent.errors)
     }
   } catch (err) {
