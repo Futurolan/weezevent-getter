@@ -10,7 +10,7 @@ function init () {
     console.error(err)
   }).finally(() => {
     console.log('Wait 5min before next run')
-    setTimeout(init, 3000)
+    setTimeout(init, 30000)
   })
 }
 
@@ -156,6 +156,8 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
       })
       tickets = tmpTickets
     }
+
+    // Writing data into DB
     const graphqlQuery = {
       query: `
       mutation ($input: WeezeventInput) {
@@ -175,6 +177,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
     if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
       throw new Error(json2.data.createWeezevent.errors)
     }
+    console.log('New data inserted into DB')
   } catch (err) {
     cache[`${editionWeezeventEventId}_${tournamentWeezeventId}`] = null
     console.log(err)
