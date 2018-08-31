@@ -169,7 +169,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
         }
       }
       `,
-      variables: {input: {data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN}}
+      variables: {input: {data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length}}
     }
 
     const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, {method: 'POST', body: JSON.stringify(graphqlQuery)})
