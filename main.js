@@ -127,7 +127,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
         } else {
           if (tickets.data === undefined) { tickets.data = [] }
           tickets.type = 'solo'
-          if (user.pseudo) tickets.push(user)
+          if (user.pseudo) tickets.data.push(user)
         }
       }
     })
