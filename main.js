@@ -99,13 +99,13 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
 
   try {
     // Create array
-    let tickets = {}
+    let tickets = {data:[]}
 
     json.participants.forEach((participant) => {
       if (participant.id_event === parseInt(editionWeezeventEventId)) { // PATCH : il arrive que le flux retour de weezevent contient des billets sans info
         let user = {}
         participant.answers.forEach((answer) => {
-          if (answer.label === "Nom d'équipe") {
+          if (answer.label === "Dénomination de l'équipe") {
             user.team = answer.value
           }
           if (answer.label === 'Pseudo') {
@@ -114,7 +114,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
         })
         if (participant.buyer) {
           participant.buyer.answers.forEach((answer) => {
-            if (answer.label === "Nom d'équipe") {
+            if (answer.label === "Dénomination de l'équipe") {
               user.team = answer.value
             }
           })
