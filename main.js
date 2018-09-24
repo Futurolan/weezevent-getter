@@ -58,6 +58,7 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
           nid
           title
           tournamentWeezeventId:fieldTournamentWeezeventId
+          teamSize:fieldWeezeventTeamSize
         }
       }
     }
@@ -69,18 +70,18 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   for (let index in json.data.nodeQuery.nodes) {
     const tournament = json.data.nodeQuery.nodes[index]
 
-    await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventId, weezeventTickets)
+    await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventId, weezeventTickets, tournament.teamSize)
   }
 }
 
-async function getTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventId, weezeventTickets) {
+async function getTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventId, weezeventTickets, teamSize) {
   console.log(`Fetching participants & tickets for tournament "${tournamentTitle}"`)
 
   if (tournamentWeezeventId === null) {
     console.log(`ERROR Field tournamentWeezeventId is missing for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
     return
   }
-  const groupSize = getGroupSize(weezeventTickets, tournamentWeezeventId)
+  const groupSize = teamSize
   if (groupSize === undefined) {
     console.log(`ERROR Cannot find ticket ${tournamentWeezeventId} for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
     return
@@ -99,7 +100,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
 
   try {
     // Create array
-    let tickets = {data:[]}
+    let tickets = {data: []}
 
     json.participants.forEach((participant) => {
       if (participant.id_event === parseInt(editionWeezeventEventId)) { // PATCH : il arrive que le flux retour de weezevent contient des billets sans info
