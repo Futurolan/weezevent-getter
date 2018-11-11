@@ -29,7 +29,7 @@ async function start () {
     }
   }`
 
-  const res = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`)
+  const res = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, {timeout: 10000})
   const json = await res.json()
 
   for (let index in json.data.nodeQuery.nodes) {
@@ -46,7 +46,7 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   }
 
   // Get the weezevent tickets
-  const res = await fetch(`https://api.weezevent.com/tickets?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}`)
+  const res = await fetch(`https://api.weezevent.com/tickets?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}`, {timeout: 10000})
   const weezeventTickets = await res.json()
 
   // Get tournaments from the current edition
@@ -64,7 +64,7 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
     }
   }`
 
-  const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`)
+  const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, {timeout: 10000})
   const json = await res2.json()
 
   for (let index in json.data.nodeQuery.nodes) {
@@ -87,7 +87,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
     return
   }
 
-  const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventId}&full=true`)
+  const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventId}&full=true`, {timeout: 10000})
   const json = await res.json()
 
   const md5 = crypto.createHash('md5').update(JSON.stringify(json.participants)).digest('hex')
@@ -173,7 +173,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
       variables: {input: {data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length}}
     }
 
-    const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, {method: 'POST', body: JSON.stringify(graphqlQuery)})
+    const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, {method: 'POST', body: JSON.stringify(graphqlQuery), timeout: 10000})
     const json2 = await res2.json()
     if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
       throw new Error(json2.data.createWeezevent.errors)
