@@ -57,7 +57,7 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
        ... on NodeTournament{
           nid
           title
-          tournamentWeezeventId:fieldTournamentWeezeventId
+          tournamentWeezeventIds:fieldTournamentWeezeventId
           teamSize:fieldWeezeventTeamSize
         }
       }
@@ -70,32 +70,31 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   for (let index in json.data.nodeQuery.nodes) {
     const tournament = json.data.nodeQuery.nodes[index]
 
-    await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventId, weezeventTickets, tournament.teamSize)
+    await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, weezeventTickets, tournament.teamSize)
   }
 }
 
-async function getTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventId, weezeventTickets, teamSize) {
+async function getTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventIds, weezeventTickets, groupSize) {
   console.log(`Fetching participants & tickets for tournament "${tournamentTitle}"`)
 
-  if (tournamentWeezeventId === null) {
-    console.log(`ERROR Field tournamentWeezeventId is missing for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
+  if (tournamentWeezeventIds.length === 0) {
+    console.log(`ERROR Field tournamentWeezeventIds is missing for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
     return
   }
-  const groupSize = teamSize
   if (groupSize === undefined) {
-    console.log(`ERROR Cannot find ticket ${tournamentWeezeventId} for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
+    console.log(`ERROR groupSize is undefined for tournament "${tournamentTitle}" with nid ${tournamentNid}`)
     return
   }
 
-  const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventId}&full=true`, {timeout: 10000})
+  const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventIds.join(',')}&full=true`, {timeout: 10000})
   const json = await res.json()
 
   const md5 = crypto.createHash('md5').update(JSON.stringify(json.participants)).digest('hex')
-  if (cache[`${editionWeezeventEventId}_${tournamentWeezeventId}`] === md5) {
+  if (cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] === md5) {
     console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
     return
   } else {
-    cache[`${editionWeezeventEventId}_${tournamentWeezeventId}`] = md5
+    cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] = md5
   }
 
   try {
@@ -180,29 +179,32 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
     }
     console.log('New data inserted into DB')
   } catch (err) {
-    cache[`${editionWeezeventEventId}_${tournamentWeezeventId}`] = null
+    cache[`${editionWeezeventEventId}_${tournamentWeezeventIds.join('')}`] = null
     console.log(err)
   }
 }
 
-function getGroupSize (weezeventTickets, tournamentWeezeventId) {
-  let result
-  weezeventTickets.events.forEach((event) => {
-    if (event.categories) {
-      event.categories.forEach((category) => {
-        category.tickets.forEach((ticket) => {
-          if (tournamentWeezeventId === ticket.id) {
-            result = ticket.group_size === undefined ? 1 : ticket.group_size
-          }
-        })
-      })
-    } else {
-      event.tickets.forEach((ticket) => {
-        if (tournamentWeezeventId === ticket.id) {
-          result = ticket.group_size === undefined ? 1 : ticket.group_size
-        }
-      })
-    }
-  })
-  return result
-}
+/**
+ * Old function, I keep it only for memories
+ */
+// function getGroupSize (weezeventTickets, tournamentWeezeventId) {
+//   let result
+//   weezeventTickets.events.forEach((event) => {
+//     if (event.categories) {
+//       event.categories.forEach((category) => {
+//         category.tickets.forEach((ticket) => {
+//           if (tournamentWeezeventId === ticket.id) {
+//             result = ticket.group_size === undefined ? 1 : ticket.group_size
+//           }
+//         })
+//       })
+//     } else {
+//       event.tickets.forEach((ticket) => {
+//         if (tournamentWeezeventId === ticket.id) {
+//           result = ticket.group_size === undefined ? 1 : ticket.group_size
+//         }
+//       })
+//     }
+//   })
+//   return result
+// }
