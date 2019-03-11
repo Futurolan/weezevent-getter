@@ -148,7 +148,9 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
                 tmpPlayers = []
               }
             })
-            tmpTickets.data.push({name: team.name, players: tmpPlayers})
+            if (tmpPlayers.length !== 0) {
+              tmpTickets.data.push({ name: team.name, players: tmpPlayers })
+            }
           } else {
             tmpTickets.data.push(team)
           }
