@@ -9,8 +9,8 @@ function init () {
   start().catch((err) => {
     console.error(err)
   }).finally(() => {
-    console.log('Wait 5min before next run')
-    setTimeout(init, 5 * 60 * 1000)
+    console.log(`Wait ${process.env.WAITING_TIME || 5}min before next run`)
+    setTimeout(init, (process.env.WAITING_TIME || 5) * 60 * 1000)
   })
 }
 
