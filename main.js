@@ -89,13 +89,13 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
   const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventIds.join(',')}&full=true`, { timeout: 10000 })
   const json = await res.json()
 
-  const md5 = crypto.createHash('md5').update(JSON.stringify(json.participants)).digest('hex')
-  if (cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] === md5) {
-    console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
-    return
-  } else {
-    cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] = md5
-  }
+  // const md5 = crypto.createHash('md5').update(JSON.stringify(json.participants)).digest('hex')
+  // if (cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] === md5) {
+    // console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
+    // return
+  // } else {
+    // cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] = md5
+  // }
 
   try {
     // Create array
