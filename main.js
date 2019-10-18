@@ -1,7 +1,7 @@
 const fetch = require('node-fetch')
 const crypto = require('crypto')
 
-let cache = {}
+const cache = {}
 
 init()
 
@@ -10,8 +10,7 @@ function init () {
     console.error(err)
   }).finally(() => {
     console.log(`Wait ${process.env.WAITING_TIME || 5}min before next run`)
-    // setTimeout(init, (process.env.WAITING_TIME || 5) * 60 * 1000)
-    setTimeout(init, 10000)
+    setTimeout(init, (process.env.WAITING_TIME || 5) * 60 * 1000)
   })
 }
 
@@ -33,7 +32,7 @@ async function start () {
   const res = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, { timeout: 10000 })
   const json = await res.json()
 
-  for (let index in json.data.nodeQuery.nodes) {
+  for (const index in json.data.nodeQuery.nodes) {
     const edition = json.data.nodeQuery.nodes[index]
     await parseEdition(edition.nid, edition.title, edition.eventId)
   }
@@ -68,7 +67,7 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, { timeout: 10000 })
   const json = await res2.json()
 
-  for (let index in json.data.nodeQuery.nodes) {
+  for (const index in json.data.nodeQuery.nodes) {
     const tournament = json.data.nodeQuery.nodes[index]
 
     await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, weezeventTickets, tournament.teamSize)
@@ -104,7 +103,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
 
     json.participants.forEach((participant) => {
       if (participant.id_event === parseInt(editionWeezeventEventId)) { // PATCH : il arrive que le flux retour de weezevent contient des billets sans info
-        let user = {}
+        const user = {}
         participant.answers.forEach((answer) => {
           if (answer.label === "Dénomination de l'équipe") {
             user.team = answer.value
