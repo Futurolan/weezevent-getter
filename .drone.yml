@@ -1,0 +1,28 @@
+kind: pipeline
+name: default
+steps:
+  - name: docker
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      repo: futurolan/${DRONE_REPO_NAME}
+      tags: latest
+  - name: update
+    image: appleboy/drone-ssh
+    settings:
+      host: 192.168.1.8
+      username: root
+      port: 22
+      key:
+        from_secret: ssh_key
+      script:
+        - bash /root/ga/update.sh ${DRONE_REPO_NAME}
+  - name: discord notification
+    image: appleboy/drone-discord
+    settings:
+      webhook_id: 667736502884761610
+      webhook_token: WDGGDXRTJAZ1RTUsZrWNSUeVarc_AJnS8M62pC6m81-5ZSqjx_yVOy30VgobORQrGXXV
+      message: Le docker ${DRONE_REPO_NAME} est déployé.
