@@ -1,7 +1,8 @@
 const fetch = require('node-fetch')
 const crypto = require('crypto')
+const moment = require('moment')
 
-let cache = {}
+const cache = {}
 
 init()
 
@@ -18,12 +19,15 @@ async function start () {
   // Get editions from backend
   const query = `
   {
-    nodeQuery(filter: {conditions: [{field: "type", value: ["edition"], operator: EQUAL}, {field: "status", value: ["1"]}, {field: "field_edition_weezevent_active",value:["1"]}]}, limit: 9999) {
+    nodeQuery(filter: {conditions: [{field: "type", value: ["edition"], operator: EQUAL}, {field: "status", value: ["1"]}]}, limit: 9999) {
       nodes:entities {
        ... on NodeEdition{
         nid
         title
-        eventId:fieldEditionWeezeventEventId
+        editionWeezeventEventId:fieldEditionWeezeventEventId
+        endDate:fieldEditionEndDate{
+            value
+          }
         }
       }
     }
@@ -32,22 +36,15 @@ async function start () {
   const res = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, { timeout: 10000 })
   const json = await res.json()
 
-  for (let index in json.data.nodeQuery.nodes) {
-    const edition = json.data.nodeQuery.nodes[index]
-    await parseEdition(edition.nid, edition.title, edition.eventId)
+  // eslint-disable-next-line no-unused-vars
+  for (const edition of json.data.nodeQuery.nodes) {
+    if (moment(edition.endDate.value).isBefore()) continue
+    await parseEdition(edition.nid, edition.title, edition.editionWeezeventEventId)
   }
 }
 
 async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) {
   console.log(`Fetching tournaments for edition "${editionTitle}"`)
-  if (editionWeezeventEventId === null) {
-    console.log(`ERROR Field eventId is missing for edition "${editionTitle}" with nid ${editionTitle}`)
-    return
-  }
-
-  // Get the weezevent tickets
-  const res = await fetch(`https://api.weezevent.com/tickets?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}`, { timeout: 10000 })
-  const weezeventTickets = await res.json()
 
   // Get tournaments from the current edition
   const query = `
@@ -58,6 +55,8 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
           nid
           title
           tournamentWeezeventIds:fieldTournamentWeezeventId
+          tournamentToornamentId:fieldTournamentToornamentId
+          tournamentWarlegendId:fieldTournamentWarlegendId
           teamSize:fieldWeezeventTeamSize
         }
       }
@@ -67,14 +66,89 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql?query=${encodeURI(query)}`, { timeout: 10000 })
   const json = await res2.json()
 
-  for (let index in json.data.nodeQuery.nodes) {
-    const tournament = json.data.nodeQuery.nodes[index]
-
-    await getTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, weezeventTickets, tournament.teamSize)
+  // eslint-disable-next-line no-unused-vars
+  for (const tournament of json.data.nodeQuery.nodes) {
+    if (editionWeezeventEventId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length > 0) {
+      console.log(`Parsing weezevent for ${tournament.title} with nid ${tournament.nid}`)
+      await getWeezeventTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, tournament.teamSize)
+    }
+    if (tournament.tournamentToornamentId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length === 0) {
+      console.log(`Parsing toornament for ${tournament.title} with nid ${tournament.nid} and toornamentId ${tournament.tournamentToornamentId}`)
+      await getToornamentTournamentParticipants(tournament.nid, tournament.title, tournament.tournamentToornamentId)
+    }
+    if (tournament.tournamentWarlegendId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length === 0) {
+      console.log(`Parsing warlegend for ${tournament.title} with nid ${tournament.nid}`)
+    }
   }
 }
 
-async function getTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventIds, weezeventTickets, groupSize) {
+async function getToornamentTournamentParticipants (tournamentNid, tournamentTitle, toornamentId) {
+  let participants = []
+
+  let pos = 0
+  let total = 0
+  do {
+    const res = await fetch(`https://api.toornament.com/viewer/v2/tournaments/${toornamentId}/participants`, {
+      headers: {
+        'X-Api-Key': process.env.TOORNAMENT_API_KEY,
+        Range: `participants=${pos}-${pos + 49}`
+      },
+      timeout: 10000
+    })
+    total = res.headers.get('content-range').split('/')[1]
+    pos += 50
+    const json = await res.json()
+
+    participants = participants.concat(json)
+  } while (pos < total)
+
+  const md5 = crypto.createHash('md5').update(JSON.stringify(participants)).digest('hex')
+  if (cache[`${toornamentId}`] === md5) {
+    console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
+    return
+  } else {
+    cache[`${toornamentId}`] = md5
+  }
+
+  const tickets = { data: [] }
+  for (const participant of participants) {
+    if (participant.lineup !== undefined) {
+      tickets.type = 'team'
+      const team = { name: participant.name, players: [] }
+      for (const player of participant.lineup) {
+        team.players.push(player.name)
+      }
+      tickets.data.push(team)
+    } else {
+      tickets.type = 'solo'
+      tickets.data.push({ pseudo: participant.name, team: '' })
+    }
+  }
+  // Writing data into DB
+  const graphqlQuery = {
+    query: `
+      mutation ($input: WeezeventInput) {
+        createWeezevent(input: $input) {
+          entity {
+            entityLabel
+          }
+          errors
+        }
+      }
+      `,
+    variables: { input: { data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length } }
+  }
+
+  const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, { method: 'POST', body: JSON.stringify(graphqlQuery), timeout: 10000 })
+
+  const json2 = await res2.json()
+  if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
+    throw new Error(json2.data.createWeezevent.errors)
+  }
+  console.log('New data inserted into DB')
+}
+
+async function getWeezeventTournamentParticipants (editionWeezeventEventId, tournamentNid, tournamentTitle, tournamentWeezeventIds, groupSize) {
   console.log(`Fetching participants & tickets for tournament "${tournamentTitle}"`)
 
   if (tournamentWeezeventIds.length === 0) {
@@ -89,6 +163,10 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
   const res = await fetch(`https://api.weezevent.com/participant/list?access_token=${process.env.WEEZEVENT_ACCESS_TOKEN}&api_key=${process.env.WEEZEVENT_API_KEY}&id_event[]=${editionWeezeventEventId}&id_ticket[]=${tournamentWeezeventIds.join(',')}&full=true`, { timeout: 10000 })
   const json = await res.json()
 
+  if (json.participants === undefined) {
+    console.log(`ERROR cannot found participants in "${tournamentTitle}" with nid ${tournamentNid}: ${json.error.message}`)
+    return
+  }
   const md5 = crypto.createHash('md5').update(JSON.stringify(json.participants)).digest('hex')
   if (cache[`${editionWeezeventEventId}_${tournamentWeezeventIds}`] === md5) {
     console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
@@ -103,7 +181,7 @@ async function getTournamentParticipants (editionWeezeventEventId, tournamentNid
 
     json.participants.forEach((participant) => {
       if (participant.id_event === parseInt(editionWeezeventEventId)) { // PATCH : il arrive que le flux retour de weezevent contient des billets sans info
-        let user = {}
+        const user = {}
         participant.answers.forEach((answer) => {
           if (answer.label === "Dénomination de l'équipe") {
             user.team = answer.value
