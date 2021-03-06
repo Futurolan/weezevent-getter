@@ -113,11 +113,13 @@ async function getToornamentTournamentParticipants (tournamentNid, tournamentTit
   const tickets = { data: [] }
   for (const participant of participants) {
     if (participant.lineup !== undefined) {
+      if (participant.name.includes('Slot Réservé')) continue
       tickets.type = 'team'
       const team = { name: participant.name, players: [] }
       for (const player of participant.lineup) {
         team.players.push(player.name)
       }
+      console.log(team)
       tickets.data.push(team)
     } else {
       tickets.type = 'solo'
