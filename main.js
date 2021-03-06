@@ -119,7 +119,6 @@ async function getToornamentTournamentParticipants (tournamentNid, tournamentTit
       for (const player of participant.lineup) {
         team.players.push(player.name)
       }
-      console.log(team)
       tickets.data.push(team)
     } else {
       tickets.type = 'solo'
