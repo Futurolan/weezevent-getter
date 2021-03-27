@@ -78,8 +78,66 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
     }
     if (tournament.tournamentWarlegendId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length === 0) {
       console.log(`Parsing warlegend for ${tournament.title} with nid ${tournament.nid}`)
+      await getWarlegendTournamentParticipants(tournament.nid, tournament.title, tournament.tournamentWarlegendId)
     }
   }
+}
+
+async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitle, warlegendId) {
+  try {
+    const event = warlegendId.split('#')[0]
+    const group = warlegendId.split('#')[1]
+
+    const res = await fetch(`https://system-beta.warlegend.net/api/events/${event}/groups/${group}/teams`, {
+      headers: {
+        cookie: `wls2_session=${process.env.WARLEGEND_TOKEN}`
+      },
+      timeout: 10000
+    })
+    const json = await res.json()
+
+    const tickets = { type: 'team', data: [] }
+    for (const group of json) {
+      const team = { name: '', players: [] }
+      for (const memberKey of Object.keys(group.members)) {
+        team.players.push(group.members[memberKey].name)
+      }
+      tickets.data.push(team)
+    }
+
+    const md5 = crypto.createHash('md5').update(JSON.stringify(tickets)).digest('hex')
+    if (cache[`${warlegendId}`] === md5) {
+      console.log(`Same data with hash ${md5} already processed for tournament "${tournamentTitle}" with nid ${tournamentNid} !!! Do nothing`)
+      return
+    } else {
+      cache[`${warlegendId}`] = md5
+    }
+  } catch (e) {
+    console.log(e)
+  }
+
+  // Writing data into DB
+  const graphqlQuery = {
+    query: `
+      mutation ($input: WeezeventInput) {
+        createWeezevent(input: $input) {
+          entity {
+            entityLabel
+          }
+          errors
+        }
+      }
+      `,
+    variables: { input: { data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length } }
+  }
+
+  const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, { method: 'POST', body: JSON.stringify(graphqlQuery), timeout: 10000 })
+
+  const json2 = await res2.json()
+  if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
+    throw new Error(json2.data.createWeezevent.errors)
+  }
+  console.log('New data inserted into DB')
 }
 
 async function getToornamentTournamentParticipants (tournamentNid, tournamentTitle, toornamentId) {
