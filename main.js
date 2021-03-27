@@ -70,11 +70,11 @@ async function parseEdition (editionNid, editionTitle, editionWeezeventEventId) 
   for (const tournament of json.data.nodeQuery.nodes) {
     if (editionWeezeventEventId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length > 0) {
       console.log(`Parsing weezevent for ${tournament.title} with nid ${tournament.nid}`)
-      await getWeezeventTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, tournament.teamSize)
+      //await getWeezeventTournamentParticipants(editionWeezeventEventId, tournament.nid, tournament.title, tournament.tournamentWeezeventIds, tournament.teamSize)
     }
     if (tournament.tournamentToornamentId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length === 0) {
       console.log(`Parsing toornament for ${tournament.title} with nid ${tournament.nid} and toornamentId ${tournament.tournamentToornamentId}`)
-      await getToornamentTournamentParticipants(tournament.nid, tournament.title, tournament.tournamentToornamentId)
+      //await getToornamentTournamentParticipants(tournament.nid, tournament.title, tournament.tournamentToornamentId)
     }
     if (tournament.tournamentWarlegendId && tournament.tournamentWeezeventIds && tournament.tournamentWeezeventIds.length === 0) {
       console.log(`Parsing warlegend for ${tournament.title} with nid ${tournament.nid}`)
@@ -100,11 +100,13 @@ async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitl
     const tickets = { type: 'team', data: [] }
     for (const group of json) {
       const team = { name: '', players: [] }
+      if(!group.accepted) continue
       for (const memberKey of Object.keys(group.members)) {
         team.players.push(group.members[memberKey].name)
       }
       tickets.data.push(team)
     }
+
 
     const md5 = crypto.createHash('md5').update(JSON.stringify(tickets)).digest('hex')
     if (cache[`${warlegendId}`] === md5) {
