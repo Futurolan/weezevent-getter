@@ -94,6 +94,7 @@ async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitl
       },
       timeout: 10000
     })
+
     const json = await res.json()
 
     const tickets = { type: 'team', data: [] }
@@ -112,13 +113,10 @@ async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitl
     } else {
       cache[`${warlegendId}`] = md5
     }
-  } catch (e) {
-    console.log(e)
-  }
 
-  // Writing data into DB
-  const graphqlQuery = {
-    query: `
+    // Writing data into DB
+    const graphqlQuery = {
+      query: `
       mutation ($input: WeezeventInput) {
         createWeezevent(input: $input) {
           entity {
@@ -128,16 +126,19 @@ async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitl
         }
       }
       `,
-    variables: { input: { data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length } }
-  }
+      variables: { input: { data: JSON.stringify(tickets), tournament: tournamentNid, token: process.env.WEEZEVENT_DRUPAL_TOKEN, count: tickets.data.length } }
+    }
 
-  const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, { method: 'POST', body: JSON.stringify(graphqlQuery), timeout: 10000 })
+    const res2 = await fetch(`${process.env.BACKEND_API_URL}/graphql`, { method: 'POST', body: JSON.stringify(graphqlQuery), timeout: 10000 })
 
-  const json2 = await res2.json()
-  if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
-    throw new Error(json2.data.createWeezevent.errors)
+    const json2 = await res2.json()
+    if (json2 && json2.data && json2.data.createWeezevent.errors.length > 0) {
+      throw new Error(json2.data.createWeezevent.errors)
+    }
+    console.log('New data inserted into DB')
+  } catch (e) {
+    console.log(e)
   }
-  console.log('New data inserted into DB')
 }
 
 async function getToornamentTournamentParticipants (tournamentNid, tournamentTitle, toornamentId) {
