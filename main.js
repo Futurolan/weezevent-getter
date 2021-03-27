@@ -100,7 +100,7 @@ async function getWarlegendTournamentParticipants (tournamentNid, tournamentTitl
     const tickets = { type: 'team', data: [] }
     for (const group of json) {
       const team = { name: '', players: [] }
-      if (!group.accepted) continue
+      if (!group.accepted || group.deleted === true) continue
       for (const memberKey of Object.keys(group.members)) {
         team.players.push(group.members[memberKey].name)
       }
