@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM node:15.14-alpine
 
 WORKDIR /usr/src/client
 COPY . .
